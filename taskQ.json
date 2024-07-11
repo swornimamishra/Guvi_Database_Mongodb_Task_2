@@ -1,0 +1,171 @@
+// Find all the topics and tasks which are thought in the month of October
+// Topics taught in October
+
+db.topics.aggregate([
+  {
+    $match: {
+      topic_date: {
+        $gte: ISODate("2021-10-01T00:00:00.000Z"),
+        $lt: ISODate("2021-11-01T00:00:00.000Z")
+      }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      topic_id: 1,
+      topic: 1,
+      date: "$topic_date",
+      type: { $literal: "Topic" }
+    }
+  }
+]);
+
+// tasks assigned in October
+db.tasks.aggregate([
+  {
+    $match: {
+      due_date: {
+        $gte: ISODate("2021-10-01T00:00:00.000Z"),
+        $lt: ISODate("2021-11-01T00:00:00.000Z")
+      }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      task_id: 1,
+      task: 1,
+      date: "$due_date",
+      type: { $literal: "Task" }
+    }
+  }
+]);
+
+// Find all the company drives which appeared between 15 oct-2020 and 31-oct-2020
+
+db.company_drives.aggregate([
+  {
+    $match: {
+      drive_date: {
+        $gte: ISODate("2021-10-15T00:00:00.000Z"),
+        $lt: ISODate("2021-11-01T00:00:00.000Z")
+      }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      drive_date: 1,
+      company_name: 1,
+      students_appeared: 1
+    }
+  }
+]);
+
+// Find all the company drives and students who are appeared for the placement.
+
+db.company_drives.aggregate([
+  {
+    $project: {
+      _id: 0,
+      company_name: 1,
+      students_appeared: 1
+    }
+  }
+]);
+
+// Find the number of problems solved by the user in codekata
+
+db.company_drives.aggregate([
+  {
+    $project: {
+      _id: 0,
+      userId: 1,
+      no_of_problems_solved: 1
+    }
+  }
+]);
+
+// Find all the mentors with who has the mentee's count more than 15
+
+db.mentors.find(
+  { mentees_count: { $gt: 15 } },
+  { _id: 0, mentor_name: 1, mentees_count: 1 }
+);
+
+
+// Find the number of users who are absent and task is not submitted  between 15 oct-2020 and 31-oct-2020
+
+
+// 1.Find the number of users who are absent
+
+db.attendance.aggregate([
+  {
+    $match: {
+      present: false
+    }
+  },
+  {
+    $group: {
+      _id: "$user-id"
+    }
+  },
+  {
+    $count: "absentUsersCount"
+  }
+]);
+
+// 2.task is not submitted  between 15 oct-2020 and 31-oct-2020
+
+db.attendance.aggregate([
+  // Lookup topics to get topic_date
+  {
+    $lookup: {
+      from: 'topics',
+      localField: 'topic_id',
+      foreignField: 'topic_id',
+      as: 'topics'
+    }
+  },
+  // Unwind the topics array to work with individual documents
+  { $unwind: '$topics' },
+  // Lookup tasks to get due_date and submitted status
+  {
+    $lookup: {
+      from: 'tasks',
+      localField: 'user-id',
+      foreignField: 'user-id',
+      as: 'tasks'
+    }
+  },
+  // Unwind the tasks array to work with individual documents
+  { $unwind: '$tasks' },
+  // Match documents based on the date range and submitted status
+  {
+    $match: {
+      'tasks.submitted': false,
+      'topics.topic_date': {
+        $gte: new Date("2020-10-15T00:00:00.000Z"),
+        $lte: new Date("2020-10-31T00:00:00.000Z")
+      },
+      'tasks.due_date': {
+        $gte: new Date("2020-10-15T00:00:00.000Z"),
+        $lte: new Date("2020-10-31T00:00:00.000Z")
+      }
+    }
+  },
+  // Group by user-id to get distinct users
+  {
+    $group: {
+      _id: '$user-id'
+    }
+  },
+  // Count the number of distinct users
+  {
+    $count: 'Absentees'
+  }
+]);
+
+
+
